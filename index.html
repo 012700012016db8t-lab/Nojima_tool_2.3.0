@@ -151,7 +151,7 @@
                         <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
                         <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
                     </div>
-                    <span class="tracking-widest uppercase">Analyzing product data...</span>
+                    <span class="tracking-widest uppercase">Searching on Google...</span>
                 </div>
             </div>
 
@@ -169,7 +169,7 @@
 
     <footer class="p-8 text-center text-slate-400 text-xs space-y-2">
         <p>© 2026 Nojima Corp. Digital Transformation Team</p>
-        <p class="opacity-50">This tool uses Google Gemini API for real-time product analysis.</p>
+        <p class="opacity-50">This tool uses Google Gemini API for real-time product analysis with Search Grounding.</p>
     </footer>
 
     <script type="module">
@@ -266,10 +266,18 @@
             if (!currentBarcode) return;
             let prompt = "";
             if (type === 'details') {
-                prompt = `JANコード「${currentBarcode}」の製品について、ノジマの店員として詳細なスペック情報を教えてください。項目別に分かりやすく、箇条書きでまとめてください。Google検索を使用して正確な最新情報を取得してください。`;
+                prompt = `あなたはノジマのプロの店員です。以下のJANコードについてGoogle検索を必ず使用して最新情報を確認し、正確な製品を特定した上で、詳細なスペック情報を箇条書きで分かりやすく教えてください。
+
+検索キーワードの指定：「JANコード ${currentBarcode}」または「${currentBarcode} スペック」
+
+※注意：検索結果が曖昧な場合や、該当する製品が特定できない場合は、絶対に妄想（ハルシネーション）で答えず、「申し訳ございません。該当する商品が特定できませんでした。」と正直に答えてください。`;
                 addChatMessage("user", "製品の詳しいスペックを教えてください。");
             } else if (type === 'features') {
-                prompt = `JANコード「${currentBarcode}」の製品について、この商品の最大の売りや特徴、おすすめのポイントを3つほど、ノジマの店員として魅力的に解説してください。Google検索を使用して正確な最新情報を取得してください。`;
+                prompt = `あなたはノジマのプロの店員です。以下のJANコードについてGoogle検索を必ず使用して最新情報を確認し、正確な製品を特定した上で、この商品の最大の売りやおすすめのポイントを3つほど魅力的に解説してください。
+
+検索キーワードの指定：「JANコード ${currentBarcode}」または「${currentBarcode} 特徴」
+
+※注意：検索結果が曖昧な場合や、該当する製品が特定できない場合は、絶対に妄想（ハルシネーション）で答えず、「申し訳ございません。該当する商品が特定できませんでした。」と正直に答えてください。`;
                 addChatMessage("user", "この商品のおすすめポイントは何ですか？");
             }
             await callGeminiSDK(prompt);
@@ -287,7 +295,15 @@
             }
             addChatMessage("user", text);
             input.value = "";
-            const prompt = `JANコード「${currentBarcode}」の製品について、お客様から以下の質問をいただきました。ノジマのプロの店員として、Google検索を使用して正確な最新情報を確認した上で、親切かつ正確に回答してください：\n\n質問：${text}`;
+            
+            const prompt = `あなたはノジマのプロの店員です。以下のJANコードについてGoogle検索を必ず使用して最新情報を確認し、正確な製品を特定した上で、お客様からの質問に親切かつ正確に回答してください。
+
+対象のJANコード：${currentBarcode} (検索キーワード：「JANコード ${currentBarcode}」)
+
+お客様の質問：${text}
+
+※注意：検索結果が曖昧な場合や商品が特定できない場合は絶対に妄想で答えず、「商品が特定できませんでした」と正直に答えてください。`;
+            
             await callGeminiSDK(prompt);
         }
 
@@ -302,15 +318,21 @@
             loadingIndicator.classList.remove('hidden');
             chatHistory.scrollTop = chatHistory.scrollHeight;
             
-            const tryRequest = async (model, tools = []) => {
+            // ツール（Google検索）を含めるかどうかを選択できるヘルパー関数
+            const tryRequest = async (model, useTools = true) => {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                const body = {
+                    contents: [{ parts: [{ text: prompt }] }]
+                };
+                
+                if (useTools) {
+                    body.tools = [{ googleSearch: {} }]; // 正しいキャメルケース
+                }
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        tools: tools.length > 0 ? tools : undefined
-                    })
+                    body: JSON.stringify(body)
                 });
                 return await response.json();
             };
@@ -318,26 +340,20 @@
             try {
                 let data;
 
-                // 1. 最新の「gemini-2.5-flash」を正しいGoogle検索ツール指定（キャメルケース）で試行
-                console.log("Trying gemini-2.5-flash with Google Search...");
-                data = await tryRequest('gemini-2.5-flash', [{ googleSearch: {} }]);
+                // 1. 最新安定版「gemini-2.0-flash」でGoogle検索ツールを指定して試行
+                console.log("Trying gemini-2.0-flash with Google Search...");
+                data = await tryRequest('gemini-2.0-flash', true);
                 
-                // 2. 失敗、あるいは未対応の場合は「gemini-2.0-flash」に切り替えて試行
-                if (data.error) {
-                    console.log("Retrying with gemini-2.0-flash with Google Search...");
-                    data = await tryRequest('gemini-2.0-flash', [{ googleSearch: {} }]);
+                // 2. モデルが見つからない・未対応の場合は「gemini-1.5-flash-latest」で検索試行
+                if (data.error && (data.error.code === 404 || data.error.message.includes("not found"))) {
+                    console.log("Retrying with gemini-1.5-flash-latest with Google Search...");
+                    data = await tryRequest('gemini-1.5-flash-latest', true);
                 }
 
-                // 3. キーの権限により検索ツール（Google Search）自体が拒否された場合のセーフティ（ツールなしリクエスト）
-                if (data.error && data.error.message.includes("tool")) {
-                    console.log("Retrying without Google Search tool...");
-                    data = await tryRequest('gemini-2.5-flash');
-                }
-
-                // 4. 正しいエンドポイント名「gemini-1.5-flash-latest」で最終フォールバック
-                if (data.error) {
-                    console.log("Falling back to gemini-1.5-flash-latest...");
-                    data = await tryRequest('gemini-1.5-flash-latest');
+                // 3. APIキーの権限等の理由でSearch機能が使えない場合（ツールなしで試行）
+                if (data.error && data.error.message && data.error.message.includes("tool")) {
+                    console.log("Retrying without Google Search tool (API restriction fallback)...");
+                    data = await tryRequest('gemini-2.0-flash', false);
                 }
                 
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
