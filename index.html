@@ -187,7 +187,6 @@
         const manualJanInput = document.getElementById('manual-jan');
         const readerPlaceholder = document.getElementById('reader-placeholder');
 
-        // Global function registration
         window.toggleSettings = () => document.getElementById('settings-panel').classList.toggle('hidden');
         window.saveApiKey = () => { 
             const key = apiKeyInput.value.trim();
@@ -256,7 +255,6 @@
         function addChatMessage(role, text) {
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${role === 'user' ? 'chat-user' : 'chat-ai'} animate-fade-in`;
-            // Simple markdown-like bold handling
             const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             bubble.innerHTML = formattedText;
             chatHistory.appendChild(bubble);
@@ -267,10 +265,10 @@
             if (!currentBarcode) return;
             let prompt = "";
             if (type === 'details') {
-                prompt = `JANコード「${currentBarcode}」の製品について、ノジマの店員として詳細なスペック情報を教えてください。項目別に分かりやすく、箇条書きでまとめてください。Google検索を使用して正確な最新情報を取得してください。`;
+                prompt = `JANコード「${currentBarcode}」の製品について、ノジマの店員として詳細なスペック情報を教えてください。項目別に分かりやすく、箇条書きでまとめてください。Google検索を使用して正確な最新情報を取得してください。もし検索結果が曖昧な場合や、該当する商品が見つからない場合は、妄想で答えずに『商品が特定できませんでした』と正直に答えてください。`;
                 addChatMessage("user", "製品の詳しいスペックを教えてください。");
             } else if (type === 'features') {
-                prompt = `JANコード「${currentBarcode}」の製品について、この商品の最大の売りや特徴、おすすめのポイントを3つほど、ノジマの店員として魅力的に解説してください。Google検索を使用して正確な最新情報を取得してください。`;
+                prompt = `JANコード「${currentBarcode}」の製品について、この商品の最大の売りや特徴、おすすめのポイントを3つほど、ノジマの店員として魅力的に解説してください。Google検索を使用して正確な最新情報を取得してください。もし検索結果が曖昧な場合や、該当する商品が見つからない場合は、妄想で答えずに『商品が特定できませんでした』と正直に答えてください。`;
                 addChatMessage("user", "この商品のおすすめポイントは何ですか？");
             }
             await callGeminiSDK(prompt);
@@ -288,7 +286,7 @@
             }
             addChatMessage("user", text);
             input.value = "";
-            const prompt = `JANコード「${currentBarcode}」の製品について、お客様から以下の質問をいただきました。ノジマのプロの店員として、Google検索を使用して正確な最新情報を確認した上で、親切かつ正確に回答してください：\n\n質問：${text}`;
+            const prompt = `JANコード「${currentBarcode}」の製品について、お客様から以下の質問をいただきました。ノジマのプロの店員として、Google検索を使用して正確な最新情報を確認した上で、親切かつ正確に回答してください。もし検索結果が曖昧な場合や、該当する商品が見つからない場合は、妄想で答えずに『商品が特定できませんでした』と正直に答えてください。：\n\n質問：${text}`;
             await callGeminiSDK(prompt);
         }
 
@@ -303,7 +301,6 @@
             loadingIndicator.classList.remove('hidden');
             chatHistory.scrollTop = chatHistory.scrollHeight;
             
-            // Try multiple endpoints and configurations to ensure success
             const tryRequest = async (model, tools = []) => {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
                 const response = await fetch(url, {
@@ -319,15 +316,13 @@
 
             try {
                 // 1. Try Gemini 2.5 Flash with Google Search
-                let data = await tryRequest('gemini-2.5-flash', [{ google_search: {} }]);
+                let data = await tryRequest('gemini-2.5-flash', [{ googleSearch: {} }]);
                 
-                // If auth error, it might be due to tool restrictions or endpoint issues
                 if (data.error && (data.error.code === 401 || data.error.status === "UNAUTHENTICATED")) {
                     console.log("Retrying with Gemini 2.0 Flash...");
-                    data = await tryRequest('gemini-2.0-flash', [{ google_search: {} }]);
+                    data = await tryRequest('gemini-2.0-flash', [{ googleSearch: {} }]);
                 }
 
-                // 2. Fallback to Gemini 1.5 Flash if still failing or model not found
                 if (data.error) {
                     console.log("Falling back to Gemini 1.5 Flash without tools...");
                     data = await tryRequest('gemini-1.5-flash');
@@ -344,7 +339,7 @@
                 console.error(e);
                 let msg = `申し訳ありません、情報の取得中にエラーが発生しました。\n\n詳細: ${e.message}`;
                 if (e.message.includes("authentication") || e.message.includes("credentials")) {
-                    msg += "\n\n**【解決策】** APIキーが正しく保存されていないか、Google側で制限されている可能性があります。右上の設定からAPIキーを再度入力し、「設定を保存」を押してください。また、Google AI Studioで新しいキーを発行し直すこともお試しください。";
+                    msg += "\n\n**【解決策】** APIキーが正しく保存されていないか、Google側で制限されている可能性があります。右上の設定からAPIキーを再度入力し、「設定を保存」を押してください。";
                 }
                 addChatMessage("ai", msg);
             } finally {
