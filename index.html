@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nojima 商品情報アシスタント Ultimate</title>
+    <title>Nojima 商品情報アシスタント Ultimate (RAG Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -12,153 +12,62 @@
         body { font-family: 'Inter', 'Noto+Sans+JP', sans-serif; background-color: #f0f2f5; }
         .nojima-blue { color: #004098; }
         .nojima-bg-blue { background-color: #004098; }
-        .nojima-red { color: #e60012; }
-        #reader { width: 100% !important; border: none !important; border-radius: 1.5rem; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
-        #reader video { border-radius: 1.5rem; object-fit: cover; }
         .chat-bubble { max-width: 85%; padding: 0.85rem 1.1rem; border-radius: 1.25rem; margin-bottom: 0.75rem; font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; transition: all 0.2s ease; }
-        .chat-user { background: linear-gradient(135deg, #004098 0%, #0056b3 100%); color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; box-shadow: 0 4px 12px rgba(0, 64, 152, 0.2); }
-        .chat-ai { background-color: white; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 0.25rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid rgba(0,0,0,0.03); }
-        .ios-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .chat-user { background: linear-gradient(135deg, #004098 0%, #0056b3 100%); color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        .chat-ai { background-color: white; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 0.25rem; border: 1px solid rgba(0,0,0,0.05); }
+        .ios-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05); }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col text-slate-900">
 
-    <header class="nojima-bg-blue text-white p-5 shadow-lg sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+    <header class="nojima-bg-blue text-white p-4 shadow-md sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white p-1.5 rounded-xl shadow-sm">
-                    <span class="nojima-blue font-black text-xl tracking-tighter">nojima</span>
-                </div>
-                <h1 class="text-xl font-bold tracking-tight hidden sm:block">商品情報アシスタント Ultimate</h1>
-                <h1 class="text-lg font-bold tracking-tight sm:hidden">商品アシスタント</h1>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="toggleSettings()" class="p-2.5 bg-blue-800/50 hover:bg-blue-700 rounded-full transition-all active:scale-95">
-                    <i data-lucide="settings" class="w-5 h-5"></i>
-                </button>
-            </div>
+            <h1 class="text-lg font-bold tracking-tight">商品アシスタント (Web検索搭載)</h1>
+            <button onclick="toggleSettings()" class="p-2 bg-blue-800/50 hover:bg-blue-700 rounded-full transition-all">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
         </div>
     </header>
 
-    <main class="flex-grow p-4 max-w-4xl mx-auto w-full space-y-6">
+    <main class="flex-grow p-4 max-w-4xl mx-auto w-full space-y-4">
         
-        <div id="settings-panel" class="hidden ios-card p-6 space-y-4 animate-fade-in">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold flex items-center gap-2 text-lg">
-                    <i data-lucide="key" class="w-5 h-5 text-blue-600"></i> API設定
-                </h3>
-                <button onclick="toggleSettings()" class="text-slate-400 hover:text-slate-600">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="flex flex-col gap-3">
-                <div class="relative">
-                    <input type="password" id="api-key" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white/50" placeholder="Gemini API Keyを入力" value="">
-                </div>
-                <button onclick="saveApiKey()" class="w-full nojima-bg-blue text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-md active:scale-[0.98]">設定を保存</button>
-                <p class="text-xs text-slate-500 text-center">※APIキーはブラウザのローカルストレージに安全に保存されます。</p>
+        <div id="settings-panel" class="hidden ios-card p-5 space-y-4 animate-fade-in">
+            <h3 class="font-bold flex items-center gap-2"><i data-lucide="key" class="w-5 h-5"></i> API設定</h3>
+            <div class="space-y-3">
+                <input type="password" id="gemini-api-key" class="w-full border p-3 rounded-xl text-sm" placeholder="Gemini API Key">
+                <input type="password" id="search-api-key" class="w-full border p-3 rounded-xl text-sm" placeholder="Custom Search API Key">
+                <input type="text" id="search-cx" class="w-full border p-3 rounded-xl text-sm" placeholder="検索エンジンID (cx)">
+                <button onclick="saveSettings()" class="w-full nojima-bg-blue text-white py-3 rounded-xl text-sm font-bold">設定を保存</button>
             </div>
         </div>
 
-        <section class="ios-card overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50">
-                <h2 class="font-bold flex items-center gap-2 text-slate-800 text-lg">
-                    <i data-lucide="scan-barcode" class="w-6 h-6 text-blue-600"></i> バーコード / JAN入力
-                </h2>
-                <span id="scan-status" class="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wider">待機中</span>
+        <section class="ios-card p-4 space-y-3">
+            <h2 class="font-bold flex items-center gap-2"><i data-lucide="scan" class="w-5 h-5"></i> バーコード入力</h2>
+            <div class="flex gap-2">
+                <input type="text" id="manual-jan" class="flex-grow border p-3 rounded-xl text-sm" placeholder="JANコードを手動入力...">
+                <button onclick="handleManualInput()" class="bg-slate-800 text-white px-5 py-3 rounded-xl text-sm font-bold">適用</button>
             </div>
-            <div class="p-5 space-y-5">
-                <div id="reader" class="bg-slate-900 aspect-[4/3] flex items-center justify-center relative">
-                    <div id="reader-placeholder" class="text-white text-center p-8">
-                        <i data-lucide="camera" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                        <p class="text-sm opacity-70">カメラを起動してバーコードをスキャンしてください</p>
-                        <button onclick="startScanner()" class="mt-4 bg-white text-blue-900 px-6 py-2 rounded-full text-sm font-bold hover:bg-blue-50 transition-all">カメラを起動</button>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3">
-                    <div class="relative flex-grow">
-                        <i data-lucide="keyboard" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="manual-jan" class="w-full border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white/50" placeholder="JANコードを手動入力...">
-                    </div>
-                    <button onclick="handleManualInput()" class="bg-slate-800 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-slate-700 transition-all shadow-sm active:scale-95">適用</button>
-                </div>
-
-                <div id="scan-result" class="hidden p-4 bg-blue-50/80 border border-blue-100 rounded-2xl flex items-center justify-between animate-fade-in">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white">
-                            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em]">READ SUCCESS</p>
-                            <p id="barcode-value" class="text-xl font-mono font-black text-blue-900"></p>
-                        </div>
-                    </div>
-                    <button onclick="restartScanner()" class="p-3 text-blue-600 hover:bg-blue-100 rounded-full transition-all active:rotate-180 duration-500">
-                        <i data-lucide="refresh-cw" class="w-6 h-6"></i>
-                    </button>
-                </div>
-            </div>
+            <p id="current-jan-display" class="text-sm font-bold text-blue-600 hidden">現在選択中: <span id="barcode-value"></span></p>
         </section>
 
-        <section id="actions-section" class="grid grid-cols-2 gap-4 opacity-50 pointer-events-none transition-all duration-300">
-            <button onclick="askGemini('details')" class="flex flex-col items-center justify-center p-6 ios-card hover:border-blue-400 hover:bg-blue-50/50 transition-all group active:scale-95">
-                <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-inner">
-                    <i data-lucide="file-text" class="w-7 h-7 text-blue-600"></i>
-                </div>
-                <span class="text-sm font-bold text-slate-800">製品スペック詳細</span>
-            </button>
-            <button onclick="askGemini('features')" class="flex flex-col items-center justify-center p-6 ios-card hover:border-red-400 hover:bg-red-50/50 transition-all group active:scale-95">
-                <div class="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-inner">
-                    <i data-lucide="sparkles" class="w-7 h-7 text-red-600"></i>
-                </div>
-                <span class="text-sm font-bold text-slate-800">おすすめポイント</span>
-            </button>
+        <section id="actions-section" class="grid grid-cols-2 gap-3 opacity-50 pointer-events-none transition-all">
+            <button onclick="handleAction('details')" class="p-4 ios-card text-sm font-bold text-slate-800 hover:bg-blue-50">製品スペック詳細</button>
+            <button onclick="handleAction('features')" class="p-4 ios-card text-sm font-bold text-slate-800 hover:bg-red-50">おすすめポイント</button>
         </section>
 
-        <section class="ios-card flex flex-col h-[600px] overflow-hidden shadow-2xl">
-            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-white/50">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-white shadow-md">
-                        <i data-lucide="bot" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-bold text-slate-800">AIコンシェルジュ</h2>
-                        <p class="text-[10px] text-slate-400 font-medium">Powered by Gemini AI</p>
-                    </div>
-                </div>
-                <button onclick="clearChat()" class="p-2 text-slate-300 hover:text-slate-500 transition-colors">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
+        <section class="ios-card flex flex-col h-[500px]">
+            <div id="chat-history" class="flex-grow overflow-y-auto p-5 flex flex-col space-y-2 bg-slate-50/50">
+                <div class="chat-bubble chat-ai">こんにちは！商品のJANコードを入力してください。最新情報を検索してお答えします。</div>
             </div>
-            
-            <div id="chat-history" class="flex-grow overflow-y-auto p-6 flex flex-col space-y-2 bg-slate-50/30">
-                <div class="chat-bubble chat-ai animate-fade-in">
-                    こんにちは！ノジマの商品情報アシスタントです。
-                    商品のJANコードをスキャンするか、手動で入力してください。
-                    最新の情報を検索してお答えします。
-                </div>
+            <div id="loading-indicator" class="hidden px-5 py-2 text-blue-600 text-xs font-bold bg-white">
+                <i data-lucide="loader-2" class="w-4 h-4 inline animate-spin mr-1"></i> Webを検索＆分析中...
             </div>
-
-            <div id="loading-indicator" class="hidden px-6 py-3 bg-white/80 backdrop-blur-sm border-t border-slate-50">
-                <div class="flex items-center gap-3 text-blue-600 text-xs font-bold">
-                    <div class="flex space-x-1.5">
-                        <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                        <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                        <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-                    </div>
-                    <span class="tracking-widest uppercase">Searching on Google...</span>
-                </div>
-            </div>
-
-            <div class="p-4 bg-white border-t border-slate-100">
-                <div class="flex gap-3 bg-slate-100 p-1.5 rounded-2xl focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-                    <input type="text" id="chat-input" class="flex-grow bg-transparent border-none rounded-xl px-4 py-3 text-sm outline-none" placeholder="この商品について何でも聞いてください..." onkeypress="if(event.key==='Enter') sendMessage()">
-                    <button onclick="sendMessage()" class="nojima-bg-blue text-white p-3 rounded-xl hover:opacity-90 transition-all shadow-lg active:scale-90">
+            <div class="p-3 bg-white border-t">
+                <div class="flex gap-2">
+                    <input type="text" id="chat-input" class="flex-grow bg-slate-100 border-none rounded-xl px-4 py-3 text-sm outline-none" placeholder="質問を入力..." onkeypress="if(event.key==='Enter') handleChat()">
+                    <button onclick="handleChat()" class="nojima-bg-blue text-white p-3 rounded-xl hover:opacity-90">
                         <i data-lucide="send" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -167,218 +76,146 @@
 
     </main>
 
-    <footer class="p-8 text-center text-slate-400 text-xs space-y-2">
-        <p>© 2026 Nojima Corp. Digital Transformation Team</p>
-        <p class="opacity-50">This tool uses Google Gemini API for real-time product analysis with Search Grounding.</p>
-    </footer>
-
     <script type="module">
         lucide.createIcons();
 
         let currentBarcode = "";
-        let html5QrCode;
-        const apiKeyInput = document.getElementById('api-key');
         const chatHistory = document.getElementById('chat-history');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const actionsSection = document.getElementById('actions-section');
-        const scanResult = document.getElementById('scan-result');
-        const barcodeValue = document.getElementById('barcode-value');
-        const scanStatus = document.getElementById('scan-status');
-        const manualJanInput = document.getElementById('manual-jan');
-        const readerPlaceholder = document.getElementById('reader-placeholder');
 
-        // Global function registration
         window.toggleSettings = () => document.getElementById('settings-panel').classList.toggle('hidden');
-        window.saveApiKey = () => { 
-            const key = apiKeyInput.value.trim();
-            if(!key) return alert('APIキーを入力してください');
-            localStorage.setItem('gemini_api_key', key); 
-            alert('APIキーを保存しました'); 
-            window.toggleSettings(); 
-        };
-        window.handleManualInput = () => { 
-            const val = manualJanInput.value.trim(); 
-            if (val) { 
-                setJanCode(val); 
-                manualJanInput.value = ""; 
-            } 
-        };
-        window.restartScanner = () => { 
-            scanResult.classList.add('hidden'); 
-            document.getElementById('reader').classList.remove('hidden'); 
-            startScanner(); 
-        };
-        window.askGemini = (type) => askGeminiImpl(type);
-        window.sendMessage = () => sendMessageImpl();
-        window.startScanner = () => startScannerImpl();
-        window.clearChat = () => {
-            chatHistory.innerHTML = '';
-            addChatMessage("ai", "チャット履歴をクリアしました。JANコードを入力してください。");
+        
+        window.saveSettings = () => {
+            localStorage.setItem('gemini_api_key', document.getElementById('gemini-api-key').value.trim());
+            localStorage.setItem('search_api_key', document.getElementById('search-api-key').value.trim());
+            localStorage.setItem('search_cx', document.getElementById('search-cx').value.trim());
+            alert('設定を保存しました！');
+            toggleSettings();
         };
 
-        function startScannerImpl() {
-            readerPlaceholder.classList.add('hidden');
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 15, qrbox: { width: 280, height: 180 } };
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                onScanSuccess
-            ).catch(err => {
-                console.error(err);
-                alert("カメラの起動に失敗しました。権限を確認してください。");
-                readerPlaceholder.classList.remove('hidden');
-            });
-            scanStatus.innerText = "スキャン中";
-            scanStatus.className = "text-xs font-bold px-3 py-1.5 rounded-full bg-blue-100 text-blue-600 animate-pulse";
-        }
+        window.onload = () => {
+            document.getElementById('gemini-api-key').value = localStorage.getItem('gemini_api_key') || "";
+            document.getElementById('search-api-key').value = localStorage.getItem('search_api_key') || "";
+            document.getElementById('search-cx').value = localStorage.getItem('search_cx') || "";
+        };
 
-        function onScanSuccess(decodedText) {
-            setJanCode(decodedText);
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('reader').classList.add('hidden');
-                }).catch(err => console.error(err));
+        window.handleManualInput = () => {
+            const val = document.getElementById('manual-jan').value.trim();
+            if (val) {
+                currentBarcode = val;
+                document.getElementById('manual-jan').value = "";
+                document.getElementById('current-jan-display').classList.remove('hidden');
+                document.getElementById('barcode-value').innerText = currentBarcode;
+                document.getElementById('actions-section').classList.remove('opacity-50', 'pointer-events-none');
+                addChatMessage("ai", `JANコード「${currentBarcode}」を設定しました。質問をどうぞ！`);
             }
-        }
-
-        function setJanCode(code) {
-            currentBarcode = code;
-            barcodeValue.innerText = currentBarcode;
-            scanResult.classList.remove('hidden');
-            actionsSection.classList.remove('opacity-50', 'pointer-events-none');
-            scanStatus.innerText = "コード確定";
-            scanStatus.className = "text-xs font-bold px-3 py-1.5 rounded-full bg-green-100 text-green-600";
-            addChatMessage("ai", `JANコード「${currentBarcode}」を認識しました。どのような情報をお調べしますか？`);
-            actionsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        };
 
         function addChatMessage(role, text) {
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${role === 'user' ? 'chat-user' : 'chat-ai'} animate-fade-in`;
-            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            bubble.innerHTML = formattedText;
+            bubble.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
             chatHistory.appendChild(bubble);
             chatHistory.scrollTop = chatHistory.scrollHeight;
         }
 
-        async function askGeminiImpl(type) {
+        window.handleAction = (type) => {
             if (!currentBarcode) return;
-            let prompt = "";
+            const query = `JANコード ${currentBarcode} スペック 価格`;
+            let instruction = "";
+            
             if (type === 'details') {
-                prompt = `あなたはノジマのプロの店員です。以下のJANコードについてGoogle検索を必ず使用して最新情報を確認し、正確な製品を特定した上で、詳細なスペック情報を箇条書きで分かりやすく教えてください。
-
-検索キーワードの指定：「JANコード ${currentBarcode}」または「${currentBarcode} スペック」
-
-※注意：検索結果が曖昧な場合や、該当する製品が特定できない場合は、絶対に妄想（ハルシネーション）で答えず、「申し訳ございません。該当する商品が特定できませんでした。」と正直に答えてください。`;
                 addChatMessage("user", "製品の詳しいスペックを教えてください。");
-            } else if (type === 'features') {
-                prompt = `あなたはノジマのプロの店員です。以下のJANコードについてGoogle検索を必ず使用して最新情報を確認し、正確な製品を特定した上で、この商品の最大の売りやおすすめのポイントを3つほど魅力的に解説してください。
-
-検索キーワードの指定：「JANコード ${currentBarcode}」または「${currentBarcode} 特徴」
-
-※注意：検索結果が曖昧な場合や、該当する製品が特定できない場合は、絶対に妄想（ハルシネーション）で答えず、「申し訳ございません。該当する商品が特定できませんでした。」と正直に答えてください。`;
+                instruction = "検索結果からこの製品の『詳細なスペック情報』を箇条書きでわかりやすく抽出してください。";
+            } else {
                 addChatMessage("user", "この商品のおすすめポイントは何ですか？");
+                instruction = "検索結果からこの製品の『最大の売りや特徴、おすすめポイント』を3つほど抽出して魅力的に解説してください。";
             }
-            await callGeminiSDK(prompt);
-        }
+            processRAG(query, instruction);
+        };
 
-        async function sendMessageImpl() {
+        window.handleChat = () => {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
-            if (!text) return;
-            if (!currentBarcode) {
-                addChatMessage("user", text);
-                addChatMessage("ai", "まずは商品のJANコードを読み取るか、手動で入力してください。");
-                input.value = "";
-                return;
-            }
+            if (!text || !currentBarcode) return;
+            
             addChatMessage("user", text);
             input.value = "";
             
-            const prompt = `あなたはノジマのプロの店員です。以下のJANコードについてGoogle検索を必ず使用して最新情報を確認し、正確な製品を特定した上で、お客様からの質問に親切かつ正確に回答してください。
-
-対象のJANコード：${currentBarcode} (検索キーワード：「JANコード ${currentBarcode}」)
-
-お客様の質問：${text}
-
-※注意：検索結果が曖昧な場合や商品が特定できない場合は絶対に妄想で答えず、「商品が特定できませんでした」と正直に答えてください。`;
+            const query = `JANコード ${currentBarcode} ${text}`;
+            const instruction = `お客様から以下の質問がありました：「${text}」\n検索結果の情報を元に、プロの店員として親切に回答してください。`;
             
-            await callGeminiSDK(prompt);
-        }
+            processRAG(query, instruction);
+        };
 
-        async function callGeminiSDK(prompt) {
-            const apiKey = apiKeyInput.value.trim();
-            if (!apiKey) { 
-                addChatMessage("ai", "APIキーが設定されていません。右上の設定ボタンからAPIキーを入力してください。"); 
-                window.toggleSettings();
-                return; 
+        // RAG (検索拡張生成) のメイン処理
+        async function processRAG(searchQuery, aiInstruction) {
+            const geminiKey = localStorage.getItem('gemini_api_key');
+            const searchKey = localStorage.getItem('search_api_key');
+            const searchCx = localStorage.getItem('search_cx');
+
+            if (!geminiKey || !searchKey || !searchCx) {
+                addChatMessage("ai", "APIキーが設定されていません。右上の設定から3つのキーを全て入力してください。");
+                return;
             }
-            
-            loadingIndicator.classList.remove('hidden');
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-            
-            // ツール（Google検索）を含めるかどうかを選択できるヘルパー関数
-            const tryRequest = async (model, useTools = true) => {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-                const body = {
-                    contents: [{ parts: [{ text: prompt }] }]
-                };
-                
-                if (useTools) {
-                    body.tools = [{ googleSearch: {} }]; // 正しいキャメルケース
-                }
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                return await response.json();
-            };
+            document.getElementById('loading-indicator').classList.remove('hidden');
 
             try {
-                let data;
+                // 1. Google Custom Search API でウェブ検索を実行
+                const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${searchKey}&cx=${searchCx}&q=${encodeURIComponent(searchQuery)}`;
+                const searchRes = await fetch(searchUrl);
+                const searchData = await searchRes.json();
 
-                // 1. 最新安定版「gemini-2.0-flash」でGoogle検索ツールを指定して試行
-                console.log("Trying gemini-2.0-flash with Google Search...");
-                data = await tryRequest('gemini-2.0-flash', true);
-                
-                // 2. モデルが見つからない・未対応の場合は「gemini-1.5-flash-latest」で検索試行
-                if (data.error && (data.error.code === 404 || data.error.message.includes("not found"))) {
-                    console.log("Retrying with gemini-1.5-flash-latest with Google Search...");
-                    data = await tryRequest('gemini-1.5-flash-latest', true);
-                }
+                if (searchData.error) throw new Error("検索APIエラー: " + searchData.error.message);
 
-                // 3. APIキーの権限等の理由でSearch機能が使えない場合（ツールなしで試行）
-                if (data.error && data.error.message && data.error.message.includes("tool")) {
-                    console.log("Retrying without Google Search tool (API restriction fallback)...");
-                    data = await tryRequest('gemini-2.0-flash', false);
-                }
-                
-                if (data.candidates && data.candidates[0].content.parts[0].text) {
-                    addChatMessage("ai", data.candidates[0].content.parts[0].text);
-                } else if (data.error) {
-                    throw new Error(data.error.message);
+                // 2. 検索結果の上位5件をテキストとしてまとめる
+                let webContext = "";
+                if (searchData.items && searchData.items.length > 0) {
+                    for (let i = 0; i < Math.min(5, searchData.items.length); i++) {
+                        webContext += `【サイト名】 ${searchData.items[i].title}\n`;
+                        webContext += `【内容】 ${searchData.items[i].snippet}\n\n`;
+                    }
                 } else {
-                    throw new Error("応答の解析に失敗しました。");
+                    webContext = "検索結果が見つかりませんでした。";
                 }
+
+                // 3. Geminiへのプロンプトを作成（検索結果 + 指示文）
+                const finalPrompt = `
+あなたはノジマのプロの店員です。以下の【ウェブ検索結果】の情報を読み解き、【指示】に従って回答を作成してください。
+
+【ウェブ検索結果】
+${webContext}
+
+【指示】
+${aiInstruction}
+
+※注意：検索結果の中に該当商品の情報が見当たらない場合は、絶対に知ったかぶり（妄想）をせず、「申し訳ございません。最新情報から該当する商品を特定できませんでした。」と正直に答えてください。
+`;
+
+                // 4. Gemini API に送信（ツール指定なし = 無料枠でOK）
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+                const geminiRes = await fetch(geminiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: finalPrompt }] }]
+                    })
+                });
+                const geminiData = await geminiRes.json();
+
+                if (geminiData.candidates && geminiData.candidates[0].content.parts[0].text) {
+                    addChatMessage("ai", geminiData.candidates[0].content.parts[0].text);
+                } else {
+                    throw new Error(geminiData.error ? geminiData.error.message : "応答の解析に失敗しました。");
+                }
+
             } catch (e) {
                 console.error(e);
-                let msg = `申し訳ありません、情報の取得中にエラーが発生しました。\n\n詳細: ${e.message}`;
-                if (e.message.includes("API key") || e.message.includes("key is invalid")) {
-                    msg += "\n\n**【原因】** 入力されたAPIキーが無効、またはコピーミスしている可能性があります。右上の設定からキーを再度ご確認ください。";
-                }
-                addChatMessage("ai", msg);
+                addChatMessage("ai", "処理中にエラーが発生しました。\n詳細: " + e.message);
             } finally {
-                loadingIndicator.classList.add('hidden');
+                document.getElementById('loading-indicator').classList.add('hidden');
             }
         }
-
-        window.onload = () => {
-            const savedKey = localStorage.getItem('gemini_api_key');
-            if (savedKey) apiKeyInput.value = savedKey;
-        };
     </script>
 </body>
 </html>
